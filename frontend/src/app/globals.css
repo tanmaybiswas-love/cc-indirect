@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
   --bg: #08080c;
   --surface: #0f0f14;
@@ -10,16 +12,61 @@
   --muted: #6b7280;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 2px; }
+
+/* Code blocks */
+pre {
+  background: #050508;
+  padding: 12px;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #9ca3af;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+code {
+  background: rgba(59,130,246,0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #60a5fa;
+}
+
+/* Animations */
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes typing {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* App layout */
 .app {
   display: flex;
   flex-direction: column;
@@ -53,9 +100,7 @@ html, body {
   letter-spacing: -0.02em;
 }
 
-.brand span {
-  opacity: 0.5;
-}
+.brand span { opacity: 0.5; }
 
 .brand-dot {
   display: inline-block;
@@ -66,9 +111,7 @@ html, body {
   margin-right: 6px;
 }
 
-.header-right {
-  margin-left: auto;
-}
+.header-right { margin-left: auto; }
 
 .status-text {
   font-size: 11px;
@@ -98,9 +141,7 @@ html, body {
   letter-spacing: -0.03em;
 }
 
-.hero h1 span {
-  color: #7c3aed;
-}
+.hero h1 span { color: #7c3aed; }
 
 .hero p {
   color: var(--muted);
@@ -122,11 +163,6 @@ html, body {
   display: flex;
   gap: 12px;
   animation: msgIn 0.25s ease;
-}
-
-@keyframes msgIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .msg-avatar {
@@ -169,12 +205,10 @@ html, body {
   border: 1px solid var(--border);
 }
 
-.msg-bubble.assistant {
-  background: #0f0f14;
-}
+.msg-bubble.assistant { background: #0f0f14; }
 
 .msg-bubble code {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
   font-size: 13px;
   background: #0a0a0f;
   padding: 12px;
@@ -226,9 +260,7 @@ html, body {
   transition: border-color 0.15s;
 }
 
-.input-box:focus-within {
-  border-color: #7c3aed;
-}
+.input-box:focus-within { border-color: #7c3aed; }
 
 .input-box textarea {
   flex: 1;
@@ -241,11 +273,10 @@ html, body {
   outline: none;
   line-height: 1.4;
   max-height: 120px;
+  font-family: 'Inter', sans-serif;
 }
 
-.input-box textarea::placeholder {
-  color: var(--muted);
-}
+.input-box textarea::placeholder { color: var(--muted); }
 
 .send-btn {
   padding: 12px 16px;
@@ -257,14 +288,8 @@ html, body {
   transition: background 0.15s;
 }
 
-.send-btn:hover:not(:disabled) {
-  background: #6d28d9;
-}
-
-.send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.send-btn:hover:not(:disabled) { background: #6d28d9; }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .input-hint {
   font-size: 11px;
@@ -303,9 +328,7 @@ html, body {
   overflow-y: auto;
 }
 
-.drawer.open {
-  transform: translateX(0);
-}
+.drawer.open { transform: translateX(0); }
 
 .drawer-header {
   display: flex;
@@ -326,9 +349,7 @@ html, body {
   font-size: 18px;
 }
 
-.drawer-header-text {
-  flex: 1;
-}
+.drawer-header-text { flex: 1; }
 
 .drawer-header-title {
   font-weight: 600;
@@ -348,13 +369,8 @@ html, body {
   cursor: pointer;
 }
 
-.drawer-body {
-  padding: 8px 0;
-}
-
-.drawer-section {
-  padding: 8px 0;
-}
+.drawer-body { padding: 8px 0; }
+.drawer-section { padding: 8px 0; }
 
 .drawer-section-title {
   font-size: 11px;
@@ -374,13 +390,9 @@ html, body {
   transition: background 0.1s;
 }
 
-.drawer-item:hover {
-  background: rgba(255,255,255,0.03);
-}
+.drawer-item:hover { background: rgba(255,255,255,0.03); }
 
-.drawer-item-icon {
-  font-size: 16px;
-}
+.drawer-item-icon { font-size: 16px; }
 
 .drawer-item-text {
   font-size: 14px;
@@ -399,9 +411,7 @@ html, body {
   transition: max-height 0.2s;
 }
 
-.drawer-sub.open {
-  max-height: 200px;
-}
+.drawer-sub.open { max-height: 200px; }
 
 .drawer-sub-item {
   padding: 8px 0;
@@ -410,14 +420,9 @@ html, body {
   cursor: pointer;
 }
 
-.drawer-sub-item:hover {
-  color: var(--text);
-}
+.drawer-sub-item:hover { color: var(--text); }
 
-/* Model List */
-.model-list {
-  padding: 4px 0 8px 44px;
-}
+.model-list { padding: 4px 0 8px 44px; }
 
 .model-item {
   display: flex;
@@ -428,9 +433,7 @@ html, body {
   cursor: pointer;
 }
 
-.model-item.selected .model-item-name {
-  color: var(--text);
-}
+.model-item.selected .model-item-name { color: var(--text); }
 
 .model-item-dot {
   width: 8px;
@@ -441,10 +444,7 @@ html, body {
 .model-item-dot.on { background: #22c55e; }
 .model-item-dot.off { background: #6b7280; }
 
-/* Key Section */
-.key-section {
-  padding: 8px 16px 16px 44px;
-}
+.key-section { padding: 8px 16px 16px 44px; }
 
 .key-label {
   font-size: 12px;
@@ -453,9 +453,7 @@ html, body {
   margin-top: 12px;
 }
 
-.key-label:first-child {
-  margin-top: 0;
-}
+.key-label:first-child { margin-top: 0; }
 
 .key-input {
   width: 100%;
@@ -466,11 +464,10 @@ html, body {
   font-size: 13px;
   color: var(--text);
   outline: none;
+  font-family: 'Inter', sans-serif;
 }
 
-.key-input:focus {
-  border-color: #7c3aed;
-}
+.key-input:focus { border-color: #7c3aed; }
 
 .key-save {
   margin-top: 16px;
@@ -484,6 +481,11 @@ html, body {
   cursor: pointer;
 }
 
-.key-save:hover {
-  background: #6d28d9;
+.key-save:hover { background: #6d28d9; }
+
+.typing-dot {
+  animation: typing 1.4s infinite;
 }
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
