@@ -9,18 +9,41 @@ router.post('/chat', async (req, res) => {
   try {
     const { projectId, message, provider, userApiKey, userProvider } = req.body;
 
-    if (!projectId || !message) {
-      return res.status(400).json({ error: 'projectId and message required' });
+    if (!message) {
+      return res.status(400).json({ error: 'message required' });
+    }
+
+    let resolvedProjectId = projectId;
+
+    // If no projectId or invalid project, create/use a default project
+    if (!resolvedProjectId) {
+      const { PrismaClient } = require('@prisma/client');
+      const p = new PrismaClient();
+      let defaultProject = await p.project.findFirst({ where: { name: 'Default Project' } });
+      if (!defaultProject) {
+        // Find or create a default guest user
+        let guestUser = await p.user.findFirst({ where: { email: 'guest@cc-indirect.local' } });
+        if (!guestUser) {
+          guestUser = await p.user.create({
+            data: { email: 'guest@cc-indirect.local', name: 'Guest' }
+          });
+        }
+        defaultProject = await p.project.create({
+          data: { userId: guestUser.id, name: 'Default Project', language: 'javascript' }
+        });
+      }
+      resolvedProjectId = defaultProject.id;
+      await p.$disconnect();
     }
 
     let result;
 
     // If user provided their own API key, use it
     if (userApiKey) {
-      result = await chatWithUserKey(projectId, message, userApiKey, userProvider || 'openai');
+      result = await chatWithUserKey(resolvedProjectId, message, userApiKey, userProvider || 'openai');
     } else {
       // Use admin keys with rate limiting
-      result = await chat(projectId, message, provider || 'auto');
+      result = await chat(resolvedProjectId, message, provider || 'auto');
     }
 
     res.json({

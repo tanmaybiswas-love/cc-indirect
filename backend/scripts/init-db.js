@@ -29,37 +29,34 @@ CREATE TABLE IF NOT EXISTS "ApiKey" (
 
 CREATE TABLE IF NOT EXISTS "Project" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "userId" TEXT NOT NULL,
+    "userId" TEXT,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "language" TEXT NOT NULL DEFAULT 'javascript',
     "context" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "Project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "File" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "projectId" TEXT NOT NULL,
+    "projectId" TEXT,
     "name" TEXT NOT NULL,
     "path" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "language" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "File_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "Message" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "projectId" TEXT NOT NULL,
+    "projectId" TEXT,
     "role" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "model" TEXT,
     "metadata" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "Message_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS "RateLimit" (
@@ -104,14 +101,35 @@ async function initDB() {
         console.log('Creating tables...');
         await client.query(createTablesSQL);
         
-        // Add missing columns to existing tables
-        console.log('Checking for missing columns...');
+        // Add missing columns and fix constraints for existing tables
+        console.log('Fixing existing table constraints...');
+        
+        // User password column
         try {
             await client.query('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "password" TEXT');
             console.log('Added password column to User table');
-        } catch (e) {
-            // Column might already exist
-        }
+        } catch (e) { /* already exists */ }
+        
+        // Make Project.userId nullable (drop old FK constraint first)
+        try {
+            await client.query('ALTER TABLE "Project" DROP CONSTRAINT IF EXISTS "Project_userId_fkey"');
+            await client.query('ALTER TABLE "Project" ALTER COLUMN "userId" DROP NOT NULL');
+            console.log('Made Project.userId nullable');
+        } catch (e) { console.log('Project.userId already nullable:', e.message); }
+        
+        // Make File.projectId nullable
+        try {
+            await client.query('ALTER TABLE "File" DROP CONSTRAINT IF EXISTS "File_projectId_fkey"');
+            await client.query('ALTER TABLE "File" ALTER COLUMN "projectId" DROP NOT NULL');
+            console.log('Made File.projectId nullable');
+        } catch (e) { console.log('File.projectId already nullable:', e.message); }
+        
+        // Make Message.projectId nullable
+        try {
+            await client.query('ALTER TABLE "Message" DROP CONSTRAINT IF EXISTS "Message_projectId_fkey"');
+            await client.query('ALTER TABLE "Message" ALTER COLUMN "projectId" DROP NOT NULL');
+            console.log('Made Message.projectId nullable');
+        } catch (e) { console.log('Message.projectId already nullable:', e.message); }
         
         console.log('Database initialization complete!');
     } catch (error) {
