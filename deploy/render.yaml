@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: cd backend && npm install && npx prisma generate
-    startCommand: cd backend && npx prisma db push --accept-data-loss && npm start
+    startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -26,11 +26,12 @@ services:
         generateValue: true
 
   - type: web
-    name: cc-indirect-web
+    name: cc-indirect
     runtime: node
     plan: free
-    buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && npm start
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
         fromService:
