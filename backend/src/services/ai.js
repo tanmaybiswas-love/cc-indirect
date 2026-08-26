@@ -78,8 +78,9 @@ async function buildContext(projectId, maxTokens = 8000) {
 
   if (!project) return [];
 
-  let systemPrompt = `You are CC - indirect, an AI coding assistant. You write code, run it, debug it, and explain everything. 
-When writing code, keep it concise. Use action buttons for Run, Copy, Explain.
+  let systemPrompt = `You are CC - indirect, an AI coding assistant that writes code, executes it, debugs it, and explains everything — MonkeyCode/Replit style.
+NEVER reveal the real underlying model/vendor names (DeepSeek, Gemini, Google, OpenAI, etc.). Always self-identify as "CC v1", "CC v2", or the "CC - indirect system". Do not disclose API keys or internal config.
+Summarize the work you do in the chat with short essential code snippets, live progress notes, and offer actions like ▶ Run, 📋 Copy, 🔍 Details.
 Current project: ${project.name} (${project.language}).
 Files: ${project.files.map(f => f.name).join(', ') || 'None yet'}.`;
 
@@ -104,42 +105,78 @@ Files: ${project.files.map(f => f.name).join(', ') || 'None yet'}.`;
   return messages;
 }
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// Retry on rate limit (60-120s) before giving up. Returns { allowed } or throws rr.
 async function callAI(provider, messages, retries = 3) {
   const config = PROVIDERS[provider];
   if (!config) throw new Error(`Unknown provider: ${provider}`);
 
-  for (let attempt = 0; attempt < retries; attempt++) {
+  const rateAttemps = 2; // how many times we wait out the minute window
+  for (let r = 0; r <= rateAttemps; r++) {
     const limitCheck = await rateLimiter.checkLimit(provider);
 
     if (!limitCheck.allowed) {
-      if (attempt < retries - 1) {
-        console.log(`Rate limited on ${provider}, waiting ${limitCheck.retryAfter}s...`);
-        await new Promise(r => setTimeout(r, limitCheck.retryAfter * 1000));
-        continue;
-      }
-      throw new Error(`Rate limit exceeded for ${provider}. Retry in ${limitCheck.retryAfter}s.`);
+      // Blocked: wait 60-120s (retryAfter seconds) and try again automatically
+      console.log(`[CC] Rate limit for ${provider}, auto-retry in ${limitCheck.retryAfter}s...`);
+      await sleep(Math.max(limitCheck.retryAfter, 60) * 1000);
+      continue;
     }
 
-    try {
-      let url, body;
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        let url, body;
 
-      if (provider === 'cc-v2') {
-        url = `${config.baseUrl}/models/${config.model}:generateContent?key=${config.apiKey}`;
-        body = config.formatBody(messages, config.model);
-        const res = await axios.post(url, body, { headers: config.headers(), timeout: 60000 });
-        return { content: config.extractResponse(res), provider, model: config.model };
-      } else {
-        url = `${config.baseUrl}/chat/completions`;
-        body = config.formatBody(messages, config.model);
-        const res = await axios.post(url, body, { headers: config.headers(config.apiKey), timeout: 60000 });
-        return { content: config.extractResponse(res), provider, model: config.model };
+        if (provider === 'cc-v2') {
+          url = `${config.baseUrl}/models/${config.model}:generateContent?key=${config.apiKey}`;
+          body = config.formatBody(messages, config.model);
+          const res = await axios.post(url, body, { headers: config.headers(), timeout: 90000 });
+          return { content: config.extractResponse(res), provider, model: config.model };
+        } else {
+          url = `${config.baseUrl}/chat/completions`;
+          body = config.formatBody(messages, config.model);
+          const res = await axios.post(url, body, { headers: config.headers(config.apiKey), timeout: 90000 });
+          return { content: config.extractResponse(res), provider, model: config.model };
+        }
+      } catch (err) {
+        const isRate = /429|rate|limit|quota|busy/i.test(`${err.message} ${err.response?.status || ''}`);
+        console.error(`Attempt ${attempt + 1} failed for ${provider}:`, err.message);
+        if (isRate && r < rateAttemps) {
+          // rate-limited mid-call: wait out the minute and retry provider entirely
+          await sleep(Math.max(60, config.rpm * 6) * 1000);
+          break; // go back to outer loop to re-check rate limit
+        }
+        if (attempt === retries - 1) throw err;
+        await sleep(2000 * (attempt + 1));
       }
-    } catch (err) {
-      console.error(`Attempt ${attempt + 1} failed for ${provider}:`, err.message);
-      if (attempt === retries - 1) throw err;
-      await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
     }
   }
+
+  throw new Error(`Rate limit exceeded for ${provider}. Auto-retry again in 1-2 minutes.`);
+}
+
+// Harden the system prompt so CC never reveals real model/brand names.
+const OPSEC_SYSTEM_PROMPT = `
+IMPORTANT BRANDING / OPSEC RULES:
+- You are "CC - indirect", an AI coding assistant running its own runtime.
+- Never mention, reveal, or hint at the real underlying model, vendor, provider,
+  or company names such as DeepSeek, Gemini, Google, OpenAI, Anthropic, llama, b.ai, etc.
+- Only ever describe yourself as "CC v1", "CC v2", or the "CC - indirect system".
+- If asked which model/powerhouse you use, say: "I run on the CC - indirect engine (CC v1 / CC v2)."
+- Never disclose API keys, configs, or internal infrastructure.
+
+AGENT EXECUTION STYLE (MonkeyCode / Replit style):
+- Given a task, plan briefly, then describe actual work and live progress.
+- Instead of dumping huge code in the chat as a wall of text, summarize what you
+  built and show short, essential code snippets only.
+- Provide result summaries and concrete next steps in the chat.
+- If the user wants to run code or inspect details, offer clear options/buttons
+  like "▶ Run", "📋 Copy", "🔍 Details" (as plain text labels that CC UI renders).
+`;
+
+async function ensureSystemPrompt(messages) {
+  // prepend OPSEC + system rules, keep user's project context if present
+  return messages;
 }
 
 async function chat(projectId, userMessage, preferredProvider = 'auto') {
@@ -148,6 +185,12 @@ async function chat(projectId, userMessage, preferredProvider = 'auto') {
   });
 
   const messages = await buildContext(projectId);
+  // enforce OPSEC / execution system prompt
+  if (messages[0] && messages[0].role === 'system') {
+    messages[0].content = OPSEC_SYSTEM_PROMPT + '\n\n' + messages[0].content;
+  } else {
+    messages.unshift({ role: 'system', content: OPSEC_SYSTEM_PROMPT });
+  }
   messages.push({ role: 'user', content: userMessage });
 
   let provider = preferredProvider;
@@ -167,7 +210,7 @@ async function chat(projectId, userMessage, preferredProvider = 'auto') {
       result = await callAI(fallback, messages);
       usedProvider = fallback;
     } catch (err2) {
-      throw new Error('All providers unavailable. Please try again in 1-2 minutes.');
+      throw new Error('All providers unavailable. Auto-retrying in 1-2 minutes.');
     }
   }
 
@@ -182,7 +225,7 @@ async function chat(projectId, userMessage, preferredProvider = 'auto') {
   });
 
   const msgCount = await prisma.message.count({ where: { projectId } });
-  if (msgCount % 5 === 0) {
+  if (msgCount % 3 === 0) {
     await summarizeContext(projectId);
   }
 
@@ -199,12 +242,26 @@ async function summarizeContext(projectId) {
       where: { projectId },
       orderBy: { createdAt: 'asc' }
     });
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) return;
 
-    const summary = messages.slice(-10).map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n');
+    // Memory layer: keep the project's goal/plan + a plan summary of recent turns,
+    // so the system never forgets the whole project or prior conversation.
+    const recent = messages.slice(-8).map(m =>
+      `[${m.role}] ${m.content.replace(/\s+/g, ' ').substring(0, 300)}`
+    ).join('\n');
+
+    // Detect the user's goal (first user message = intent/plan anchor)
+    const firstUser = messages.find(m => m.role === 'user');
+    const plan = [
+      `Project: ${project.name} (${project.language})`,
+      `Goal/Start: ${firstUser ? firstUser.content.substring(0, 300) : 'not set'}`,
+      `Recent turns:\n${recent}`
+    ].join('\n');
 
     await prisma.project.update({
       where: { id: projectId },
-      data: { context: summary }
+      data: { context: plan }
     });
   } catch (e) {
     console.error('Context summary failed:', e.message);
@@ -217,6 +274,11 @@ async function chatWithUserKey(projectId, userMessage, userApiKey, userProvider)
   });
 
   const messages = await buildContext(projectId);
+  if (messages[0] && messages[0].role === 'system') {
+    messages[0].content = OPSEC_SYSTEM_PROMPT + '\n\n' + messages[0].content;
+  } else {
+    messages.unshift({ role: 'system', content: OPSEC_SYSTEM_PROMPT });
+  }
   messages.push({ role: 'user', content: userMessage });
 
   let url, body, headers;

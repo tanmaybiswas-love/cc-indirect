@@ -42,6 +42,8 @@ export default function Home() {
   const [userProvider, setUserProvider] = useState('openai');
   const [selectedModel, setSelectedModel] = useState('auto');
   const [showModelSelect, setShowModelSelect] = useState(false);
+  const [showAdminKeys, setShowAdminKeys] = useState(false);
+  const [showUserKeys, setShowUserKeys] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -162,10 +164,10 @@ export default function Home() {
   };
 
   const models = [
-    { id: 'auto', name: 'Auto Route', desc: 'Smart selection' },
-    { id: 'cc-v1', name: 'CC v1', desc: 'Deep coding' },
-    { id: 'cc-v2', name: 'CC v2', desc: 'Fast inference' },
-    { id: 'custom', name: 'Your Key', desc: 'Use your API' }
+    { id: 'auto', name: 'Auto Route (Smart)', desc: 'Smart selection', dot: 'on' },
+    { id: 'cc-v1', name: 'CC v1', desc: 'Deep coding engine', dot: 'on' },
+    { id: 'cc-v2', name: 'CC v2', desc: 'Fast inference engine', dot: 'on' },
+    { id: 'custom', name: 'Your Key', desc: 'Use your own API', dot: 'off' }
   ];
 
   const copyCode = (code: string) => {
@@ -179,7 +181,7 @@ export default function Home() {
     return (
       <div className="msg-body">
         <div className="msg-name">{msg.role === 'assistant' ? 'CC' : 'You'}</div>
-        <div className={`msg-bubble ${msg.role}`}>
+        <div className={`msg-bubble ${msg.role === 'assistant' ? 'ai' : 'user'}`}>
           {parts.map((part, i) => {
             if (part.startsWith('```')) {
               const code = part.replace(/```[\w]*\n?/, '').replace(/```$/, '');
@@ -239,7 +241,7 @@ export default function Home() {
         <div className="chat-area">
           {messages.map((msg) => (
             <div key={msg.id} className="msg" style={{ animation: 'msgIn 0.25s ease' }}>
-              <div className={`msg-avatar ${msg.role}`}>
+              <div className={`msg-avatar ${msg.role === 'assistant' ? 'ai' : 'user'}`}>
                 {msg.role === 'assistant' ? '◈' : '◉'}
               </div>
               {renderMessage(msg)}
@@ -311,9 +313,25 @@ export default function Home() {
                     setDrawerOpen(false);
                   }}>{p.name}</div>
                 ))}
+                <div className="drawer-sub-item" onClick={() => { setCurrentProject('default'); setDrawerOpen(false); }}>Default</div>
               </div>
             )}
-            <div className="drawer-item">
+            <div className="drawer-item" onClick={() => setActiveTab(activeTab === 'files' ? '' : 'files')}>
+              <span className="drawer-item-icon">📄</span>
+              <span className="drawer-item-text">Files</span>
+              <span className="drawer-item-arrow">›</span>
+            </div>
+            <div className="drawer-item" onClick={() => {
+              // Clear chat
+              setMessages([{
+                id: 'cleared',
+                role: 'assistant',
+                content: 'Chat cleared. What would you like to build?',
+                provider: 'CC',
+                timestamp: new Date()
+              }]);
+              setDrawerOpen(false);
+            }}>
               <span className="drawer-item-icon">🗑️</span>
               <span className="drawer-item-text">Clear Chat</span>
             </div>
@@ -324,16 +342,16 @@ export default function Home() {
             <div className="drawer-item" onClick={() => setShowModelSelect(!showModelSelect)}>
               <span className="drawer-item-icon">🤖</span>
               <span className="drawer-item-text">
-                {models.find(m => m.id === selectedModel)?.name || 'Auto'}
+                {models.find(m => m.id === selectedModel)?.name || 'Auto Route (Smart)'}
               </span>
               <span className="drawer-item-arrow">›</span>
             </div>
             {showModelSelect && (
-              <div className="model-list">
+              <div className="model-list drawer-sub open" style={{ padding: '0 8px', display: 'block' }}>
                 {models.map(m => (
                   <div key={m.id} className={`model-item ${selectedModel === m.id ? 'selected' : ''}`}
                     onClick={() => { setSelectedModel(m.id); setShowModelSelect(false); }}>
-                    <span className={`model-item-dot ${m.id !== 'custom' ? 'on' : 'off'}`} />
+                    <span className={`model-item-dot ${m.dot}`} />
                     <span className="model-item-name">{m.name}</span>
                   </div>
                 ))}
@@ -343,37 +361,54 @@ export default function Home() {
 
           <div className="drawer-section">
             <div className="drawer-section-title">API Keys</div>
-            <div className="drawer-item" onClick={() => setActiveTab(activeTab === 'keys' ? '' : 'keys')}>
+            <div className="drawer-item" onClick={() => setShowAdminKeys(!showAdminKeys)}>
+              <span className="drawer-item-icon">🔐</span>
+              <span className="drawer-item-text">Admin Keys</span>
+              <span className="drawer-item-arrow">›</span>
+            </div>
+            {showAdminKeys && (
+              <div className="drawer-sub open">
+                <div className="key-section">
+                  <div className="key-label">CC v1 Key (Admin)</div>
+                  <input className="key-input" type="password" value="••••••configured" readOnly />
+                  <div className="key-label">CC v2 Key (Admin)</div>
+                  <input className="key-input" type="password" value="••••••configured" readOnly />
+                </div>
+              </div>
+            )}
+            <div className="drawer-item" onClick={() => setShowUserKeys(!showUserKeys)}>
               <span className="drawer-item-icon">🔑</span>
               <span className="drawer-item-text">Your Keys</span>
               <span className="drawer-item-arrow">›</span>
             </div>
-            {activeTab === 'keys' && (
-              <div className="key-section">
-                <div className="key-label">Your API Key (Optional)</div>
-                <input
-                  className="key-input"
-                  type="password"
-                  placeholder="sk-..."
-                  value={userApiKey}
-                  onChange={(e) => setUserApiKey(e.target.value)}
-                />
-                <div className="key-label">Provider</div>
-                <select
-                  className="key-input"
-                  value={userProvider}
-                  onChange={(e) => setUserProvider(e.target.value)}
-                  style={{ color: '#9ca3af' }}
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="deepseek">DeepSeek</option>
-                  <option value="gemini">Gemini</option>
-                  <option value="anthropic">Anthropic</option>
-                </select>
-                <button className="key-save" onClick={() => {
-                  alert('Key saved!');
-                  setDrawerOpen(false);
-                }}>Save Key</button>
+            {showUserKeys && (
+              <div className="drawer-sub open">
+                <div className="key-section">
+                  <div className="key-label">Your API Key (Optional)</div>
+                  <input
+                    className="key-input"
+                    type="password"
+                    placeholder="sk-..."
+                    value={userApiKey}
+                    onChange={(e) => setUserApiKey(e.target.value)}
+                  />
+                  <div className="key-label">Provider</div>
+                  <select
+                    className="key-input"
+                    value={userProvider}
+                    onChange={(e) => setUserProvider(e.target.value)}
+                    style={{ color: '#d1d5db' }}
+                  >
+                    <option value="openai">OpenAI-compatible</option>
+                    <option value="anthropic">Anthropic-compatible</option>
+                    <option value="gemini">Gemini-compatible</option>
+                    <option value="custom">Custom Endpoint</option>
+                  </select>
+                  <button className="key-save" onClick={() => {
+                    alert('Key saved!');
+                    setDrawerOpen(false);
+                  }}>Save Key</button>
+                </div>
               </div>
             )}
           </div>
@@ -383,7 +418,7 @@ export default function Home() {
             <div className="drawer-item">
               <span className="drawer-item-icon">🌙</span>
               <span className="drawer-item-text">Dark Mode</span>
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#374151' }}>On</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#374151' }}>Always on</span>
             </div>
             <div className="drawer-item">
               <span className="drawer-item-icon">ℹ️</span>
