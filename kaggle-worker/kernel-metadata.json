@@ -1,0 +1,16 @@
+{
+  "id": "rahulglmmodel/cc-indirect-gpu-worker",
+  "title": "cc-indirect-gpu-worker",
+  "code_file": "CC_Indirect_Kaggle_Worker.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "machine_shape": "accelerate",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
