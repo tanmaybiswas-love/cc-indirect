@@ -4,8 +4,8 @@
   "description": "CC - indirect AI coding platform backend",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "npx prisma migrate deploy && node src/index.js",
+    "dev": "npx prisma db push && nodemon src/index.js",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate"
