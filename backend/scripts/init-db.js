@@ -8,6 +8,7 @@ const createTablesSQL = `
 CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "email" TEXT NOT NULL UNIQUE,
+    "password" TEXT,
     "name" TEXT,
     "avatar" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -102,7 +103,17 @@ async function initDB() {
         await client.connect();
         console.log('Creating tables...');
         await client.query(createTablesSQL);
-        console.log('All tables created successfully!');
+        
+        // Add missing columns to existing tables
+        console.log('Checking for missing columns...');
+        try {
+            await client.query('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "password" TEXT');
+            console.log('Added password column to User table');
+        } catch (e) {
+            // Column might already exist
+        }
+        
+        console.log('Database initialization complete!');
     } catch (error) {
         console.error('Database initialization failed:', error.message);
         process.exit(1);
